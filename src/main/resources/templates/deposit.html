@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deposits</title>
+</head>
+<body>
+    <h1>Deposit</h1>
+    <form action="#" th:action="@{/deposit}" th:object="${depositInput}" method="post">
+        <input type="text" name="name" th:field="*{amount}">
+        <input type="submit" value="Deposit"> <input type="reset" value="Reset">
+    </form>
+    <a href="/">Back</a>
+</body>
+</html>
