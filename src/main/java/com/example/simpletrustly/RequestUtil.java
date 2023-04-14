@@ -1,5 +1,6 @@
 package com.example.simpletrustly;
 
+import java.util.HashMap;
 import java.util.UUID;
 
 import org.springframework.http.HttpEntity;
@@ -8,7 +9,6 @@ import org.springframework.http.MediaType;
 import org.springframework.web.client.RestTemplate;
 
 import com.example.simpletrustly.Deposits.DepositRequest;
-import com.example.simpletrustly.Deposits.DepositResponse;
 import com.example.simpletrustly.SignatureManager.SignatureManager;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -17,33 +17,43 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class RequestUtil {
     public static String DoDeposit(String amount) {
         DepositRequest request = new DepositRequest();
-        request.method = "Deposit";
-        request.version = "1.1";
 
-        request.params.UUID = UUID.randomUUID().toString();
+        HashMap<String, Object> params = new HashMap<>();
+        HashMap<String, Object> data = new HashMap<>();
+        HashMap<String, Object> attributes = new HashMap<>();
+        //HashMap<String, Object> recipientInformation = new HashMap<>();
 
-        DepositRequest.Data data = request.params.Data;
-        data.Username = "devcode";
-        data.Password = "change_this_gef4D37ypL";
-        data.NotificationURL = "https://soralei.com/notification";
-        data.EndUserID = "12345";
-        data.MessageID = request.params.UUID;
+        String uuid = UUID.randomUUID().toString();
 
-        DepositRequest.Attributes attributes = request.params.Data.Attributes;
-        attributes.Country = "SE";
-        attributes.Locale = "sv_SE";
-        attributes.Currency = "EUR";
-        attributes.Amount = amount;
-        attributes.IP = "123.123.123.123";
-        attributes.MobilePhone = "+46709876543";
-        attributes.Firstname = "John";
-        attributes.Lastname = "Doe";
-        attributes.Email = "test@trustly.com";
-        attributes.NationalIdentificationNumber = "790131-123";
-        attributes.SuccessURL = "https://soralei.com/txsuccess";
-        attributes.FailURL = "https://soralei.com/txfail";
+        request.setParams(params);
+        params.put("UUID", uuid);
+        params.put("Data", data);
 
-        request.params.Signature = SignatureManager.CreateSignature(request.method, request.params.UUID, SignatureManager.SerializeData(data));
+        data.put("Username", "devcode");
+        data.put("Password", "change_this_gef4D37ypL");
+        data.put("NotificationURL", "https://soralei.com/notification");
+        data.put("EndUserID", "12345");
+        data.put("MessageID", uuid);
+        data.put("Attributes", attributes);
+
+        attributes.put("Country", "SE");
+        attributes.put("Locale", "sv_SE");
+        attributes.put("Currency", "EUR");
+        attributes.put("Amount", amount);
+        attributes.put("IP", "123.123.123.123");
+        attributes.put("MobilePhone", "+46709876543");
+        attributes.put("Firstname", "John");
+        attributes.put("Lastname", "Doe");
+        attributes.put("Email", "test@trustly.com");
+        attributes.put("NationalIdentificationNumber", "790131-123");
+        attributes.put("SuccessURL", "https://soralei.com/txsuccess");
+        attributes.put("FailURL", "https://soralei.com/txfail");
+
+        // Could conditionally check if recipientInformation should be added here
+        // but not needed right now
+        // attributes.put("RecipientInformation", recipientInformation);
+
+        params.put("Signature", SignatureManager.CreateSignature(request.getMethod(), uuid, SignatureManager.SerializeData(data)));
 
         // Map into a JsonNode to easily get rid of null fields
         ObjectMapper mapper = new ObjectMapper().setDefaultPropertyInclusion(Include.NON_NULL);
@@ -58,16 +68,18 @@ public class RequestUtil {
             HttpEntity<JsonNode> ent = new HttpEntity<>(requestNode, headers);
             HttpEntity<JsonNode> response = requestTemplate.postForEntity("https://test.trustly.com/api/1", ent, JsonNode.class);
 
+            JsonNode responseBody = mapper.valueToTree(response.getBody());
+            JsonNode responseData = responseBody.get("result").get("data");
+            String responseSignature = responseBody.get("result").get("signature").asText();
+            String responseMethod = responseBody.get("result").get("method").asText();
+            String responseUuid = responseBody.get("result").get("uuid").asText();
+            String responseUrl = responseData.get("url").asText();
 
-            DepositResponse depositResponse = mapper.treeToValue(response.getBody(), DepositResponse.class);
-            JsonNode responseJson = mapper.valueToTree(response.getBody());
-            JsonNode responseData = responseJson.get("result").get("data");
+            System.out.println("Received response: " + responseBody.toPrettyString());
 
-            System.out.println("Received response: " + responseJson.toPrettyString());
-
-            Boolean verified = SignatureManager.VerifySignature(depositResponse.result.signature, depositResponse.result.method, depositResponse.result.uuid, SignatureManager.SerializeData(responseData));
+            Boolean verified = SignatureManager.VerifySignature(responseSignature, responseMethod, responseUuid, SignatureManager.SerializeData(responseData));
             if(verified) {
-                return depositResponse.result.data.url;
+                return responseUrl;
             }
         } catch (Exception e) {
             e.printStackTrace();

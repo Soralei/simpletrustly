@@ -1,17 +1,24 @@
 package com.example.simpletrustly.Notifications;
 
+import java.util.HashMap;
+
 public class NotificationResponse {
-    public String version = "1.1";
-    public Result result = new Result();
-
-    public static class Result {
-        public String signature;
-        public String uuid;
-        public String method;
-        public Data data = new Data();
+    private String version;
+    private HashMap<String, Object> result;
+    
+    public NotificationResponse() {
+        this.version = "1.1";
     }
-
-    public static class Data {
-        public String status = "OK";
-    };
+    public String getVersion() {
+        return version;
+    }
+    public void setVersion(String version) {
+        this.version = version;
+    }
+    public HashMap<String, Object> getResult() {
+        return result;
+    }
+    public void setResult(HashMap<String, Object> result) {
+        this.result = result;
+    }
 }
